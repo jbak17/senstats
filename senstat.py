@@ -2,11 +2,12 @@
 This program will return the hours of a public hearing in a .txt file, assuming that Hansard has used standard wordings naming committees.
 This program will not work for a sub-committee.
 """
-import re
-import os
-import glob
 import datetime
+import glob
+import os
+import re
 import string
+import sys
 
 #consider each text file in directory and print start, finish and suspension times.
 def cttee_type(file):
@@ -31,7 +32,11 @@ def cttee_type(file):
                     continue
     return cttee
 
-cttee_type()
+cmd = sys.argv[1]
+print cmd
+def test_cttee_type(path):
+    print cttee_type(path) #debugging test
+
 def witness_count():
     '''
     Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
