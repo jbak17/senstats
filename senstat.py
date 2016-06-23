@@ -9,7 +9,31 @@ import re
 import string
 import sys
 
-#consider each text file in directory and print start, finish and suspension times.
+#iterates over files and calls helper functions.
+def scraper(path):
+    '''
+    Iterates over all .doc, .txt, and .pdf files in the directory path.
+    Calls helper functions to find duration, committee types and witness numbers.
+    '''
+    #dictionaries for recording statistics
+    leg_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
+    ref_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
+    #gather relevant files from directory
+    files = list(set(glob.glob((path+'/*.txt')) + glob.glob((path+'/*.pdf')) + glob.glob((path+'/*.doc'))))
+    # files + glob.glob((path+'/*.txt'))
+    # files + glob.glob((path+'/*.pdf'))
+    # files + glob.glob((path+'/*.doc'))
+    print files
+    for file in files:
+        if file[-3:] == 'txt':
+            print 'found txt'
+        elif file[-3:] == 'pdf':
+            print 'found pdf'
+        elif file[-3:] == 'doc':
+            print 'found doc'
+
+scraper(sys.argv[1])
+
 def cttee_type(file):
     '''
     Takes a file of format .txt and identifies if the committee is legislation, reference, or sub-committee.
@@ -32,18 +56,20 @@ def cttee_type(file):
                     continue
     return cttee
 
-cmd = sys.argv[1]
-print cmd
-def test_cttee_type(path):
-    outstring = cttee_type(path); #debugging test
-    print outstring;
-test_cttee_type(cmd)
+# block comment below for testing test_cttee_type. Passed on 23/6/16.
+# cmd = sys.argv[1]
+# print cmd
+# def test_cttee_type(path):
+#     outstring = cttee_type(path); #debugging test
+#     print outstring;
+# test_cttee_type(cmd)
 
 def witness_count():
     '''
     Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
     '''
 
+#consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
     '''
     Takes a path and iterates over the files in that folder ending in .txt.
