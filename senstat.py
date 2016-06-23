@@ -35,7 +35,9 @@ def cttee_type(file):
 cmd = sys.argv[1]
 print cmd
 def test_cttee_type(path):
-    print cttee_type(path) #debugging test
+    outstring = cttee_type(path); #debugging test
+    print outstring;
+test_cttee_type(cmd)
 
 def witness_count():
     '''

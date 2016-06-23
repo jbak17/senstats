@@ -3,6 +3,7 @@ from pdfminer.converter import TextConverter
 from pdfminer.layout import LAParams
 from pdfminer.pdfpage import PDFPage
 from cStringIO import StringIO
+import sys
 
 #Fuction to convert pdf file to text document.
 def convert_pdf_to_txt(path):
@@ -27,3 +28,20 @@ def convert_pdf_to_txt(path):
     device.close()
     retstr.close()
     return text
+#
+# import pyPdf;
+# def convert_pdf(document):
+#     #fo = open(document[:-4], 'w');
+#     pdf = pyPdf.PdfFileReader(open(document, 'rb'));
+#     for page in pdf.pages:
+#         print page.extractText()
+#         #fo.write(page.extractText());
+#     #fo.close();
+#
+# cmd = sys.argv[1]
+# print cmd
+path = '/home/jarrod/workspace/senstats/hansard.pdf'
+convert_pdf_to_txt(path)
+fo = open('output.txt', 'w');
+fo.write(convert_pdf_to_txt(path));
+fo.close();
