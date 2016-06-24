@@ -70,8 +70,8 @@ def witness_count(path):
             #loop breaks once hearing commences.
             if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
                 break
-            if re.search('^[A-Z]+,\s[A-Z][a-z]', line):
-                temp = line[0:8]
+            if re.search('(?:M|D)(r|rs|iss|s)\s[A-Z].+,', line):
+                temp = line[0:25]
                 if temp not in witness_list:
                     witness_list.append(temp)
                     witnesses += 1;
@@ -79,12 +79,13 @@ def witness_count(path):
                 print 'temp: {}'.format(temp)
     return witnesses
 
-print witness_count('030816.txt')
-print '\n'
-print witness_count('060115.txt')
-print '\n'
-print witness_count('070715.txt')
-
+files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
+def test_witness_count(paths):
+    for f in paths:
+        num = witness_count(f)
+        print 'file: {} \n{}'.format(f, num)
+        print '\n'
+test_witness_count(files)
 
 #consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
