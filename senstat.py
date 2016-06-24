@@ -8,6 +8,7 @@ import os
 import re
 import string
 import sys
+import tests
 
 #iterates over files and calls helper functions.
 def scraper(path):
@@ -20,10 +21,8 @@ def scraper(path):
     ref_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
     #gather relevant files from directory
     files = list(set(glob.glob((path+'/*.txt')) + glob.glob((path+'/*.pdf')) + glob.glob((path+'/*.doc'))))
-    # files + glob.glob((path+'/*.txt'))
-    # files + glob.glob((path+'/*.pdf'))
-    # files + glob.glob((path+'/*.doc'))
-    print files
+    #print files
+
     for file in files:
         if file[-3:] == 'txt':
             print 'found txt'
@@ -32,7 +31,7 @@ def scraper(path):
         elif file[-3:] == 'doc':
             print 'found doc'
 
-scraper(sys.argv[1])
+#scraper(sys.argv[1])
 
 def cttee_type(file):
     '''
@@ -56,18 +55,36 @@ def cttee_type(file):
                     continue
     return cttee
 
-# block comment below for testing test_cttee_type. Passed on 23/6/16.
-# cmd = sys.argv[1]
-# print cmd
-# def test_cttee_type(path):
-#     outstring = cttee_type(path); #debugging test
-#     print outstring;
-# test_cttee_type(cmd)
-
-def witness_count():
+def witness_count(path):
     '''
     Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
     '''
+    witnesses = 0
+    witness_list = []
+    print path
+    with open(path) as f:
+        for line in f:
+            line = line.rstrip();
+            #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
+            #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
+            #loop breaks once hearing commences.
+            if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
+                break
+            if re.search('^[A-Z]+,\s[A-Z][a-z]', line):
+                temp = line[0:8]
+                if temp not in witness_list:
+                    witness_list.append(temp)
+                    witnesses += 1;
+                print 'line: {}'.format(line)
+                print 'temp: {}'.format(temp)
+    return witnesses
+
+print witness_count('030816.txt')
+print '\n'
+print witness_count('060115.txt')
+print '\n'
+print witness_count('070715.txt')
+
 
 #consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
