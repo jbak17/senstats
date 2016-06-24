@@ -55,6 +55,41 @@ def cttee_type(file):
                     continue
     return cttee
 
+def hearing_location(path):
+    '''
+    Determines which state or territory the hearing was held in.
+    Takes a path to a txt file.
+    Returns a string
+    '''
+    location = None;
+    start = False
+    with open(path) as f:
+        for line in f:
+            line = line.rstrip();
+            line = line.lstrip();
+            #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
+            #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
+            #loop breaks once hearing commences.
+            if re.search('BY AUTHORITY OF', line):
+                break
+            if re.search('(?:MON|TUES|WEDNES|THURS|FRI)DAY', line):
+                start = True
+                continue
+            if start:
+                if re.search('[A-Z]+?', line):
+                    location = line
+                    break
+    return location
+
+files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
+def test_location(paths):
+    for f in paths:
+        location = hearing_location(f)
+        print 'file: {} \n{}'.format(f, location)
+        print '\n'
+test_location(files)
+
+
 def witness_count(path):
     '''
     Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
@@ -71,21 +106,13 @@ def witness_count(path):
             if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
                 break
             if re.search('(?:M|D)(r|rs|iss|s)\s[A-Z].+,', line):
-                temp = line[0:25]
+                temp = line[0:20]
                 if temp not in witness_list:
                     witness_list.append(temp)
                     witnesses += 1;
-                print 'line: {}'.format(line)
-                print 'temp: {}'.format(temp)
+                # print 'line: {}'.format(line)
+                # print 'temp: {}'.format(temp)
     return witnesses
-
-files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
-def test_witness_count(paths):
-    for f in paths:
-        num = witness_count(f)
-        print 'file: {} \n{}'.format(f, num)
-        print '\n'
-test_witness_count(files)
 
 #consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
