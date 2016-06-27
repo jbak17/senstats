@@ -59,10 +59,14 @@ def hearing_location(path):
     '''
     Determines which state or territory the hearing was held in.
     Takes a path to a txt file.
-    Returns a string
+    Returns a string with the state or territory.
+    If the location wasn't in the dictionary of locations, the function will return a string of the location in city form.
     '''
+    #Dictionary to convert hearing city to state.
+    states = {'SYDNEY': 'NSW', 'NEWCASTLE': 'NSW', 'MELBOURNE': 'VIC', 'GEELONG': 'VIC', 'BENDIGO': 'VIC', 'CANBERRA': 'ACT', 'ADELAIDE': 'SA', 'PERTH': 'WA', 'HOBART': 'TAS', 'DARWIN': 'NT'}
     location = None;
-    start = False
+    start = False;
+    retString = None;
     with open(path) as f:
         for line in f:
             line = line.rstrip();
@@ -79,7 +83,11 @@ def hearing_location(path):
                 if re.search('[A-Z]+?', line):
                     location = line
                     break
-    return location
+    try:
+        retString = states[location];
+    except KeyError:
+        retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
+    return retString
 
 files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
 def test_location(paths):
