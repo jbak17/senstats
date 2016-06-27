@@ -8,7 +8,7 @@ import os
 import re
 import string
 import sys
-import tests
+import PyPDF2
 
 #iterates over files and calls helper functions.
 def scraper(path):
@@ -19,19 +19,23 @@ def scraper(path):
     #dictionaries for recording statistics
     leg_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
     ref_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
+    locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
+
     #gather relevant files from directory
-    files = list(set(glob.glob((path+'/*.txt')) + glob.glob((path+'/*.pdf')) + glob.glob((path+'/*.doc'))))
+    files = list ( set ( glob.glob (path+'/*.txt') + glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
     #print files
 
     for file in files:
         if file[-3:] == 'txt':
+            print file
             print 'found txt'
         elif file[-3:] == 'pdf':
+            print file
             print 'found pdf'
-        elif file[-3:] == 'doc':
+        elif file[-3:] == 'doc' or 'ocx':
+            print file
             print 'found doc'
-
-#scraper(sys.argv[1])
+            word_to_txt(file)
 
 def cttee_type(file):
     '''
@@ -89,14 +93,13 @@ def hearing_location(path):
         retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
     return retString
 
-files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
-def test_location(paths):
-    for f in paths:
-        location = hearing_location(f)
-        print 'file: {} \n{}'.format(f, location)
-        print '\n'
-test_location(files)
-
+# files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
+# def test_location(paths):
+#     for f in paths:
+#         location = hearing_location(f)
+#         print 'file: {} \n{}'.format(f, location)
+#         print '\n'
+# test_location(files)
 
 def witness_count(path):
     '''
@@ -170,3 +173,70 @@ def hearing_duration(path):
 
             #return duration
             return 'Hearing {} ran for {}.'.format(file, out_time)
+
+def word_to_txt(path):
+    '''
+    Takes a doc file path (/*/*/.../*.doc) and converts to a txt file
+    returns a path to the newly created txt file (/*/*/.../*.txt)
+    # '''
+    temp_string = path.split('.');
+    inputDirectory = temp_string[0];
+    cmd = 'unoconv -f  txt ' + path
+    os.system(cmd)
+    newpath = inputDirectory + '.txt'
+    #print '{} converted to {}.'.format(path, newpath)
+    return newpath
+
+def hansard_page_count(files):
+    '''
+    takes list of files and returns an integer sum of the number of pages.
+    '''
+    pages = 0
+    for in_file in files:
+        inputFile = PyPDF2.PdfFileReader(in_file)
+        pages += inputFile.getNumPages()
+        pages -= 4 #taking into account the leading pages in Hansard pdfs.
+
+    return pages
+
+def count_subs(files):
+    '''
+    Input: Takes a list of .pdf files' paths
+    Returns: a tuple (number of submissions, number of pages)
+    Attachments are counted as page numbers, but not in the submission count.
+    '''
+    countedSubs = [] #array to hold titles, if an attachment has the same number the count won't be incremented
+    pages = 0
+    for sub in files:
+        #extract the file name from the directory root
+        directory = sub.split('/')
+        file_name = directory[-1]
+        #print file_name
+        re_sub = re.compile('\d+')
+        submission_num = re_sub.findall(file_name)
+
+        if len(submission_num)  >  0:                  #check a valid number was found
+            index = int(submission_num[0])         #cast to integer
+            if index not in countedSubs:
+                countedSubs.append(index)
+
+        #count pages
+        try:
+            inputFile = PyPDF2.PdfFileReader(sub)
+            pages += inputFile.getNumPages()
+        except:
+            print "Unable to process {}".format(sub)
+            continue
+    return (len(countedSubs), pages,)
+
+def get_files():
+    '''
+    Helper function for testing.
+    Set path below to gather files for use elsewhere.
+    '''
+    files = glob.glob ('/home/jarrod/workspace/senstats/*.pdf')
+    #print files
+    return files
+
+print count_subs(get_files())
+#scraper(sys.argv[1])
