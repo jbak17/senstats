@@ -9,9 +9,10 @@ import re
 import string
 import sys
 import PyPDF2
+from pdf_to_txt import convert_pdf_to_txt
 
 #iterates over files and calls helper functions.
-def scraper(path):
+def hearings(path):
     '''
     Iterates over all .doc, .txt, and .pdf files in the directory path.
     Calls helper functions to find duration, committee types and witness numbers.
@@ -21,21 +22,63 @@ def scraper(path):
     ref_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
     locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
 
-    #gather relevant files from directory
-    files = list ( set ( glob.glob (path+'/*.txt') + glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
-    #print files
+    #convert all files to txt
+    conv_to_txt(path)
 
+    #get files for processing
+    files = glob.glob (path+'/*.txt')
+
+    #calculate durations, hearing number and witnesses:
+    for path in files:
+        #type of committee
+        ctteeType = cttee_type()
+        if ctteeType == 'References':
+            ref_cttee['hearings'] += 1
+            ref_cttee['witnesses'] += witness_count(path)
+        elif ctteeType == 'Legislation':
+            leg_cttee['hearings'] += 1
+            leg_cttee['witnesses'] += witness_count(path)
+
+        #locations
+        loc = hearing_location(path)
+        if len(loc) < 5:
+            locations[loc] += 1
+        else:
+            print loc
+        #witnesses
+
+
+def conv_to_txt(path):
+    '''
+    Converts all pdf and word documents to txt.
+    Returns None.
+    '''
+    #gather relevant files from directory
+    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
+
+    #convert all files to txt for later processing.
     for file in files:
         if file[-3:] == 'txt':
             print file
             print 'found txt'
         elif file[-3:] == 'pdf':
-            print file
-            print 'found pdf'
+            try:
+                convert_pdf_to_txt(file)
+                newpath = file[:-3] + 'txt'
+                files.append(newpath)
+                print file
+                print 'found pdf'
+            except Exception as e:
+                print 'Unable to convert %s to pdf'.format(path)
         elif file[-3:] == 'doc' or 'ocx':
-            print file
-            print 'found doc'
-            word_to_txt(file)
+            try:
+                word_to_txt(file)
+                newpath = file[:-3] + 'txt'
+                files.append(newpath)
+                print file
+                print 'found doc'
+            except Exception as e:
+                print 'Unable to convert %s to pdf'.format(path)
 
 def cttee_type(file):
     '''
@@ -93,14 +136,6 @@ def hearing_location(path):
         retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
     return retString
 
-# files = ['030816.txt', '060115.txt', '070715.txt'] #~134 witnesses at estimates
-# def test_location(paths):
-#     for f in paths:
-#         location = hearing_location(f)
-#         print 'file: {} \n{}'.format(f, location)
-#         print '\n'
-# test_location(files)
-
 def witness_count(path):
     '''
     Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
@@ -128,51 +163,57 @@ def witness_count(path):
 #consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
     '''
-    Takes a path and iterates over the files in that folder ending in .txt.
-    Function returns a string indicating how much time the hearing in the relevant folder ran for.
+    Takes a path to a .txt file.
+    Returns a string indicating how much time the hearing in the relevant folder ran for.
     '''
-    for file in glob.glob((path+'/*.txt')):
-        times = []
-        with open(file) as f:
-            for line in f:
-                line = line.rstrip()
-                #looks for lines that start with a capital C and include a time.
-                if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
-                    times.append(line)
-                #looks for lines that start with a capital P and include a time.
-                if re.search('Proceedings suspended.+[0-9][0-9]:[0-9][0-9]', line):
-                    times.append(line)
+    times = []
+    with open(path) as f:
+        for line in f:
+            line = line.rstrip()
+            #looks for lines that start with a capital C and include a time.
+            if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
+                times.append(line)
+            #looks for lines that start with a capital P and include a time.
+            if re.search('Proceedings suspended.+[0-9][0-9]:[0-9][0-9]', line):
+                times.append(line)
 
-            #extract times from lines and place into array.
-            times_clean = []
-            for line in times:
-                temp = line.split()
-                for i in temp:
-                    if re.search('^[0-9].+?', i):
-                        times_clean.append(i.translate(string.maketrans("",""), string.punctuation))
-            #print times_clean      #degugging print statement
+        #extract times from lines and place into array.
+        times_clean = []
+        for line in times:
+            temp = line.split()
+            for i in temp:
+                if re.search('^[0-9].+?', i):
+                    times_clean.append(i.translate(string.maketrans("",""), string.punctuation))
+        #print times_clean      #degugging print statement
 
-            #calculate durations
-            try:
-                assert True, len(times_clean) % 2 == 0
-            except AssertionEror as e:
-                raise 'An incorrect number of times were found, program cannot guarantee accuracy of reported times.'
-            time_total = 0
-            duration = []
-            while len(times_clean) != 0:
-                start = times_clean.pop(0)
-                end = times_clean.pop(0)
-                duration.append(datetime.timedelta(minutes=int(end[-2:]), hours=int(end[:2])) - datetime.timedelta(minutes=int(start[-2:]), hours=int(start[:2])))
+        #calculate durations
+        try:
+            assert True, len(times_clean) % 2 == 0
+        except AssertionEror as e:
+            raise 'An incorrect number of times were found, program cannot guarantee accuracy of reported times.'
+        time_total = 0
+        duration = []
+        while len(times_clean) != 0:
+            start = times_clean.pop(0)
+            end = times_clean.pop(0)
+            duration.append(datetime.timedelta(minutes=int(end[-2:]), hours=int(end[:2])) - datetime.timedelta(minutes=int(start[-2:]), hours=int(start[:2])))
 
-            for i in duration:
-                time_total += i.total_seconds()
-            #convert the number of seconds into a user-readable format.
-            m, s = divmod(time_total, 60)
-            h, m = divmod(m, 60)
-            out_time = '%d:%02d:%02d' % (h, m, s)
+        for i in duration:
+            time_total += i.total_seconds()
 
-            #return duration
-            return 'Hearing {} ran for {}.'.format(file, out_time)
+        return time_total
+
+def time_to_str(seconds):
+    '''
+    convert the number of seconds into a user-readable format.
+    Takes number of seconds
+    Returns human readable string in HH:MM:SS
+    '''
+    m, s = divmod(seconds, 60)
+    h, m = divmod(m, 60)
+    out_time = '%d:%02d:%02d' % (h, m, s)
+    #return duration
+    return 'Hearing {} ran for {}.'.format(path, out_time)
 
 def word_to_txt(path):
     '''
@@ -229,14 +270,19 @@ def count_subs(files):
             continue
     return (len(countedSubs), pages,)
 
-def get_files():
+def get_files(dir, type):
     '''
-    Helper function for testing.
-    Set path below to gather files for use elsewhere.
+    Helper function to gather files.
+    dir = directory path string
+    Type = Takes a string of either 'doc', 'docx', 'txt' or 'pdf'
+    Returns list of paths to those files.
     '''
-    files = glob.glob ('/home/jarrod/workspace/senstats/*.pdf')
+    types = ['doc', 'docx', 'pdf', 'txt']
+    assert type in types:
+    files = glob.glob ( dir + '/*.' + type)
     #print files
     return files
 
-print count_subs(get_files())
-#scraper(sys.argv[1])
+if __name__ = '__main__':
+    #print count_subs(get_files())
+    #scraper(sys.argv[1])
