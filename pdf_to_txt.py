@@ -38,10 +38,9 @@ def convert_pdf_to_txt(path):
 #         #fo.write(page.extractText());
 #     #fo.close();
 #
-# cmd = sys.argv[1]
-# print cmd
-path = '/home/jarrod/workspace/senstats/hansard.pdf'
-convert_pdf_to_txt(path)
-fo = open('output.txt', 'w');
-fo.write(convert_pdf_to_txt(path));
-fo.close();
+if __name__ == '__main__':
+    cmd = sys.argv[1]
+    print cmd
+    fo = open(str(cmd), 'w');
+    fo.write(convert_pdf_to_txt(cmd));
+    fo.close();

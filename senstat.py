@@ -10,6 +10,7 @@ import string
 import sys
 import PyPDF2
 from pdf_to_txt import convert_pdf_to_txt
+import outstrings
 
 #iterates over files and calls helper functions.
 def hearings(path):
@@ -18,67 +19,81 @@ def hearings(path):
     Calls helper functions to find duration, committee types and witness numbers.
     '''
     #dictionaries for recording statistics
-    leg_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
-    ref_cttee = {'hearings': 0, 'duration': 0, 'witnesses': 0};
     locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
+    leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
+    ref_cttee = {'type': 'References', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
+
+    printer = outstrings.Outstrings() #create Outstrings ojbect with the functionality of different print outputs
 
     #convert all files to txt
-    conv_to_txt(path)
+    #gather relevant files from directory
+    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
+    for item in files:
+        conv_to_txt(item)
 
     #get files for processing
     files = glob.glob (path+'/*.txt')
+    print 'The following text files were found: \n {}'.format(files)
 
     #calculate durations, hearing number and witnesses:
     for path in files:
         #type of committee
-        ctteeType = cttee_type()
+        ctteeType = cttee_type(path)
+        time = hearing_duration(path)
+        loc = hearing_location(path)    #find location of hearing
         if ctteeType == 'References':
-            ref_cttee['hearings'] += 1
-            ref_cttee['witnesses'] += witness_count(path)
+            ref_cttee['hearings'] += 1      #increment number of references hearings
+            ref_cttee['witnesses'] += witness_count(path)       #add witnesses
+            if type(time) == float:
+                ref_cttee['duration'] += time
+            else:
+                print time      #this is an error message saying that the file couldn't be calculated
+            if len(loc) < 5:
+                ref_cttee['locations'][loc] += 1
+            else:
+                print loc
+
         elif ctteeType == 'Legislation':
             leg_cttee['hearings'] += 1
             leg_cttee['witnesses'] += witness_count(path)
+            if type(time) == float:
+                leg_cttee['duration'] += hearing_duration(path)
+            else:
+                print time
+            if len(loc) < 5:
+                leg_cttee['locations'][loc] += 1
+            else:
+                print loc
 
-        #locations
-        loc = hearing_location(path)
-        if len(loc) < 5:
-            locations[loc] += 1
-        else:
-            print loc
-        #witnesses
-
+        #print
+    printer.publicHearingOutString(leg_cttee)
+    printer.publicHearingOutString(ref_cttee)
 
 def conv_to_txt(path):
     '''
     Converts all pdf and word documents to txt.
     Returns None.
     '''
-    #gather relevant files from directory
-    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
-
     #convert all files to txt for later processing.
-    for file in files:
-        if file[-3:] == 'txt':
-            print file
-            print 'found txt'
-        elif file[-3:] == 'pdf':
-            try:
-                convert_pdf_to_txt(file)
-                newpath = file[:-3] + 'txt'
-                files.append(newpath)
-                print file
-                print 'found pdf'
-            except Exception as e:
-                print 'Unable to convert %s to pdf'.format(path)
-        elif file[-3:] == 'doc' or 'ocx':
-            try:
-                word_to_txt(file)
-                newpath = file[:-3] + 'txt'
-                files.append(newpath)
-                print file
-                print 'found doc'
-            except Exception as e:
-                print 'Unable to convert %s to pdf'.format(path)
+    if path[-3:] == 'txt':
+        print path
+        print 'found txt'
+    elif path[-3:] == 'pdf':
+        try:
+            convert_pdf_to_txt(path)
+            newpath = path[:-3] + 'txt'
+            print path
+            print 'found pdf'
+        except Exception as e:
+            print 'Unable to convert %s to pdf'.format(path)
+    elif path[-3:] == 'doc' or 'ocx':
+        try:
+            word_to_txt(path)
+            newpath = path[:-3] + 'txt'
+            print path
+            print 'found doc'
+        except Exception as e:
+            print 'Unable to convert %s to pdf'.format(path)
 
 def cttee_type(file):
     '''
@@ -142,7 +157,7 @@ def witness_count(path):
     '''
     witnesses = 0
     witness_list = []
-    print path
+    #print 'witness list path: ' + path
     with open(path) as f:
         for line in f:
             line = line.rstrip();
@@ -200,20 +215,7 @@ def hearing_duration(path):
 
         for i in duration:
             time_total += i.total_seconds()
-
         return time_total
-
-def time_to_str(seconds):
-    '''
-    convert the number of seconds into a user-readable format.
-    Takes number of seconds
-    Returns human readable string in HH:MM:SS
-    '''
-    m, s = divmod(seconds, 60)
-    h, m = divmod(m, 60)
-    out_time = '%d:%02d:%02d' % (h, m, s)
-    #return duration
-    return 'Hearing {} ran for {}.'.format(path, out_time)
 
 def word_to_txt(path):
     '''
@@ -230,7 +232,7 @@ def word_to_txt(path):
 
 def hansard_page_count(files):
     '''
-    takes list of files and returns an integer sum of the number of pages.
+    takes list of pdf files and returns an integer sum of the number of pages.
     '''
     pages = 0
     for in_file in files:
@@ -278,11 +280,11 @@ def get_files(dir, type):
     Returns list of paths to those files.
     '''
     types = ['doc', 'docx', 'pdf', 'txt']
-    assert type in types:
+    assert type in types
     files = glob.glob ( dir + '/*.' + type)
     #print files
     return files
 
-if __name__ = '__main__':
+if __name__ == '__main__':
     #print count_subs(get_files())
-    #scraper(sys.argv[1])
+    hearings(sys.argv[1])
