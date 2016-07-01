@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """
 This program will return the hours of a public hearing in a .txt file, assuming that Hansard has used standard wordings naming committees.
 This program will not work for a sub-committee.
@@ -29,6 +30,7 @@ def hearings(path):
     #gather relevant files from directory
     files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
     for item in files:
+        print 'Converting file {} of {}'.format((files.index(item) + 1), len(files))
         conv_to_txt(item)
 
     #get files for processing
@@ -44,6 +46,13 @@ def hearings(path):
         if ctteeType == 'References':
             ref_cttee['hearings'] += 1      #increment number of references hearings
             ref_cttee['witnesses'] += witness_count(path)       #add witnesses
+            #get page count
+            pdf_path = path[:-3] + 'pdf'
+            try:
+                ref_cttee['hansard'] += hansard_page_count(pdf_path)
+            except Exception as e:
+                print 'unable to calculate page for {}'.format(path)
+            #update time
             if type(time) == float:
                 ref_cttee['duration'] += time
             else:
@@ -80,20 +89,45 @@ def conv_to_txt(path):
         print 'found txt'
     elif path[-3:] == 'pdf':
         try:
-            convert_pdf_to_txt(path)
             newpath = path[:-3] + 'txt'
-            print path
-            print 'found pdf'
+            fo = open(newpath, 'w');
+            fo.write(convert_pdf_to_txt(path));
+            fo.close();
+            #print '{} was converted to txt.'.format(path)
+            #print 'found pdf'
         except Exception as e:
             print 'Unable to convert %s to pdf'.format(path)
     elif path[-3:] == 'doc' or 'ocx':
         try:
-            word_to_txt(path)
+            word_to_txt(path, 'txt')
             newpath = path[:-3] + 'txt'
             print path
             print 'found doc'
         except Exception as e:
             print 'Unable to convert %s to pdf'.format(path)
+
+def conv_to_xml(path):
+    try:
+        new_file = word_to_txt(path, 'xml')
+        return new_file
+    except Exception as e:
+        print 'Unable to convert %s to xml'.format(path)
+
+def pages_from_xml(xml_file):
+    try:
+        pages = null
+        with open(xml_file) as f:
+            for line in f:
+                line = line.rstrip()
+                #looks for lines that start with a capital C and include a time.
+                if re.search('<Pages>\d+</Pages>', line):
+                    pages = line
+                    break
+            page_count = filter(lambda x: x.isdigit(), pages)
+        return page_count
+
+    except Exception as e:
+        print 'Unable to extract page numbers from {}'.format(xml_file)
 
 def cttee_type(file):
     '''
@@ -175,7 +209,6 @@ def witness_count(path):
                 # print 'temp: {}'.format(temp)
     return witnesses
 
-#consider each text file in directory and print start, finish and suspension times.
 def hearing_duration(path):
     '''
     Takes a path to a .txt file.
@@ -217,29 +250,28 @@ def hearing_duration(path):
             time_total += i.total_seconds()
         return time_total
 
-def word_to_txt(path):
+def word_to_txt(path, export_format):
     '''
-    Takes a doc file path (/*/*/.../*.doc) and converts to a txt file
-    returns a path to the newly created txt file (/*/*/.../*.txt)
+    Takes a doc file path (/*/*/.../*.doc) and converts to the designated file type
+    Inputs are strings
+    returns a path to the newly created  file (/*/*/.../*.export_format)
     # '''
     temp_string = path.split('.');
     inputDirectory = temp_string[0];
-    cmd = 'unoconv -f  txt ' + path
+    cmd = 'unoconv -f  {} {}'.format(export_format, path)
     os.system(cmd)
-    newpath = inputDirectory + '.txt'
+    newpath = inputDirectory + export_format
     #print '{} converted to {}.'.format(path, newpath)
     return newpath
 
-def hansard_page_count(files):
+def hansard_page_count(file):
     '''
-    takes list of pdf files and returns an integer sum of the number of pages.
+    takes a pdf file and returns an integer sum of the number of pages.
     '''
     pages = 0
-    for in_file in files:
-        inputFile = PyPDF2.PdfFileReader(in_file)
-        pages += inputFile.getNumPages()
-        pages -= 4 #taking into account the leading pages in Hansard pdfs.
-
+    inputFile = PyPDF2.PdfFileReader(file)
+    pages += inputFile.getNumPages()
+    pages -= 4 #taking into account the leading pages in Hansard pdfs.
     return pages
 
 def count_subs(files):
@@ -287,4 +319,5 @@ def get_files(dir, type):
 
 if __name__ == '__main__':
     #print count_subs(get_files())
-    hearings(sys.argv[1])
+    f = conv_to_xml(sys.argv[1])
+    print pages_from_xml(f)
