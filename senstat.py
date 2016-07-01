@@ -8,6 +8,7 @@ import glob
 import os
 import re
 import string
+import subprocess
 import sys
 import PyPDF2
 from pdf_to_txt import convert_pdf_to_txt
@@ -28,30 +29,41 @@ def hearings(path):
 
     #convert all files to txt
     #gather relevant files from directory
-    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.doc*') ) )
+    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.docx') ) )
     for item in files:
         print 'Converting file {} of {}'.format((files.index(item) + 1), len(files))
         conv_to_txt(item)
 
     #get files for processing
-    files = glob.glob (path+'/*.txt')
-    print 'The following text files were found: \n {}'.format(files)
+    files_txt = glob.glob (path+'/*.txt')
+    #print 'The following text files were found: \n {}'.format(files)
 
     #calculate durations, hearing number and witnesses:
-    for path in files:
+    for path in files_txt:
         #type of committee
+        #print 'establish cttee type'
         ctteeType = cttee_type(path)
+        #print 'calculate duration'
         time = hearing_duration(path)
+        #print 'find location'
         loc = hearing_location(path)    #find location of hearing
         if ctteeType == 'References':
             ref_cttee['hearings'] += 1      #increment number of references hearings
+            print 'count witnesses'
             ref_cttee['witnesses'] += witness_count(path)       #add witnesses
             #get page count
-            pdf_path = path[:-3] + 'pdf'
             try:
-                ref_cttee['hansard'] += hansard_page_count(pdf_path)
+                pdf_path = path[:-3] + 'pdf'
+                doc_path = path[:-3] + 'docx'
+                if pdf_path in files:
+                    ref_cttee['hansard'] += hansard_page_count(pdf_path)
+                elif doc_path in files:
+                    print 'doc found'
+                    ref_cttee['hansard'] += pages_from_docx(doc_path)
+                else:
+                    print 'Unable to calculate pages for {}'.format(path)
             except Exception as e:
-                print 'unable to calculate page for {}'.format(path)
+                print 'Unable to calculate pages for {}'.format(path)
             #update time
             if type(time) == float:
                 ref_cttee['duration'] += time
@@ -65,6 +77,17 @@ def hearings(path):
         elif ctteeType == 'Legislation':
             leg_cttee['hearings'] += 1
             leg_cttee['witnesses'] += witness_count(path)
+            #get page count
+            try:
+                pdf_path = path[:-3] + 'pdf'
+                leg_cttee['hansard'] += hansard_page_count(pdf_path)
+            except Exception as e:
+                print '{} does not exist'.format(path)
+            try:
+                doc_path = path[:-3] + 'docx'
+                leg_cttee['hansard'] += pages_from_docx(doc_path)
+            except Exception as e:
+                print 'Unable to calculate pages for {}'.format(doc_path)
             if type(time) == float:
                 leg_cttee['duration'] += hearing_duration(path)
             else:
@@ -84,10 +107,7 @@ def conv_to_txt(path):
     Returns None.
     '''
     #convert all files to txt for later processing.
-    if path[-3:] == 'txt':
-        print path
-        print 'found txt'
-    elif path[-3:] == 'pdf':
+    if path[-3:] == 'pdf':
         try:
             newpath = path[:-3] + 'txt'
             fo = open(newpath, 'w');
@@ -101,8 +121,6 @@ def conv_to_txt(path):
         try:
             word_to_txt(path, 'txt')
             newpath = path[:-3] + 'txt'
-            print path
-            print 'found doc'
         except Exception as e:
             print 'Unable to convert %s to pdf'.format(path)
 
@@ -113,21 +131,16 @@ def conv_to_xml(path):
     except Exception as e:
         print 'Unable to convert %s to xml'.format(path)
 
-def pages_from_xml(xml_file):
-    try:
-        pages = null
-        with open(xml_file) as f:
-            for line in f:
-                line = line.rstrip()
-                #looks for lines that start with a capital C and include a time.
-                if re.search('<Pages>\d+</Pages>', line):
-                    pages = line
-                    break
-            page_count = filter(lambda x: x.isdigit(), pages)
-        return page_count
-
-    except Exception as e:
-        print 'Unable to extract page numbers from {}'.format(xml_file)
+def pages_from_docx(docx_file):
+    #try:
+    cmd = 'unzip -p {} docProps/app.xml | grep -oP "(?<=\<Pages\>).*(?=\</Pages\>)"'.format(docx_file)
+    print cmd
+    pages = subprocess.check_output(cmd)
+    print type(pages)
+    pages -= 4 #adjusting page count due to Hansard formatting
+    return pages
+    #except Exception as e:
+    print 'Unable to extract page numbers from {}'.format(docx_file)
 
 def cttee_type(file):
     '''
@@ -140,11 +153,12 @@ def cttee_type(file):
         while cttee == None:
             for line in f:
                 line = line.rstrip()
+                line = line.lower()
                 #looks for lines that start with a capital C and include a time.
-                if re.search('REFERENCES COMMITTEE', line):
+                if re.search('references committee', line):
                     cttee = 'References'
                     break
-                elif re.search('LEGISLATION COMMITTEE', line):
+                elif re.search('legislation committee', line):
                     cttee = 'Legislation';
                     break
                 else:
@@ -167,6 +181,7 @@ def hearing_location(path):
         for line in f:
             line = line.rstrip();
             line = line.lstrip();
+            line = line.upper()
             #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
             #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
             #loop breaks once hearing commences.
@@ -319,5 +334,4 @@ def get_files(dir, type):
 
 if __name__ == '__main__':
     #print count_subs(get_files())
-    f = conv_to_xml(sys.argv[1])
-    print pages_from_xml(f)
+    hearings(sys.argv[1])
