@@ -52,3 +52,10 @@ class Outstrings(object):
     # locations = {'ACT': 0, 'WA': 1, 'NT': 0, 'SA': 0, 'QLD': 2, 'NSW': 0, 'VIC': 0, 'TAS': 0}
     # leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 1, 'witnesses': 23, 'locations': locations.copy(), 'hansard': 200 };
     # publicHearingOutString(leg_cttee)
+
+class Converters(object):
+    '''
+    Class to hold all the converter functions for senstats
+    '''
+    def __init__(self):
+        pass

@@ -1,8 +1,9 @@
-#!/usr/bin/python
+ksp#!/usr/bin/python
 """
 This program will return the hours of a public hearing in a .txt file, assuming that Hansard has used standard wordings naming committees.
 This program will not work for a sub-committee.
 """
+import argparse
 import datetime
 import glob
 import os
@@ -58,7 +59,7 @@ def hearings(path):
                 if pdf_path in files:
                     ref_cttee['hansard'] += hansard_page_count(pdf_path)
                 elif doc_path in files:
-                    print 'doc found'
+                    f = print 'doc found'
                     ref_cttee['hansard'] += pages_from_docx(doc_path)
                 else:
                     print 'Unable to calculate pages for {}'.format(path)
@@ -119,28 +120,28 @@ def conv_to_txt(path):
             print 'Unable to convert %s to pdf'.format(path)
     elif path[-3:] == 'doc' or 'ocx':
         try:
-            word_to_txt(path, 'txt')
+            conv_from_word(path, 'txt')
             newpath = path[:-3] + 'txt'
         except Exception as e:
             print 'Unable to convert %s to pdf'.format(path)
 
 def conv_to_xml(path):
     try:
-        new_file = word_to_txt(path, 'xml')
+        new_file = conv_from_word(path, 'xml')
         return new_file
     except Exception as e:
         print 'Unable to convert %s to xml'.format(path)
 
 def pages_from_docx(docx_file):
-    #try:
-    cmd = 'unzip -p {} docProps/app.xml | grep -oP "(?<=\<Pages\>).*(?=\</Pages\>)"'.format(docx_file)
-    print cmd
-    pages = subprocess.check_output(cmd)
-    print type(pages)
-    pages -= 4 #adjusting page count due to Hansard formatting
-    return pages
-    #except Exception as e:
-    print 'Unable to extract page numbers from {}'.format(docx_file)
+    try:
+        cmd = 'unzip -p {} docProps/app.xml | grep -oP "(?<=\<Pages\>).*(?=\</Pages\>)"'.format(docx_file)
+        print cmd
+        pages = subprocess.check_output(cmd)
+        print type(pages)
+        pages -= 4 #adjusting page count due to Hansard formatting
+        return pages
+    except Exception as e:
+        print 'Unable to extract page numbers from {}'.format(docx_file)
 
 def cttee_type(file):
     '''
@@ -265,7 +266,7 @@ def hearing_duration(path):
             time_total += i.total_seconds()
         return time_total
 
-def word_to_txt(path, export_format):
+def conv_from_word(path, export_format):
     '''
     Takes a doc file path (/*/*/.../*.doc) and converts to the designated file type
     Inputs are strings
