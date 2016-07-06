@@ -13,6 +13,8 @@ import sys
 import PyPDF2
 from pdf_to_txt import convert_pdf_to_txt
 import outstrings
+import zipfile
+import lxml.etree
 
 #iterates over files and calls helper functions.
 def hearings(path):
@@ -119,17 +121,14 @@ def conv_to_txt(path):
             print 'Unable to convert %s to pdf'.format(path)
     elif path[-3:] == 'doc' or 'ocx':
         try:
-            word_to_txt(path, 'txt')
-            newpath = path[:-3] + 'txt'
+            pdfPath = word_to_txt(path, 'pdf')
+            txtPath = pdfPath.split('.')
+            txtPath = txtPath[0] + '.txt'
+            fo = open(txtPath, 'w');
+            fo.write(convert_pdf_to_txt(pdfPath));
+            fo.close();
         except Exception as e:
             print 'Unable to convert %s to pdf'.format(path)
-
-def conv_to_xml(path):
-    try:
-        new_file = word_to_txt(path, 'xml')
-        return new_file
-    except Exception as e:
-        print 'Unable to convert %s to xml'.format(path)
 
 def pages_from_docx(docx_file):
     #try:
@@ -275,8 +274,8 @@ def word_to_txt(path, export_format):
     inputDirectory = temp_string[0];
     cmd = 'unoconv -f  {} {}'.format(export_format, path)
     os.system(cmd)
-    newpath = inputDirectory + export_format
-    #print '{} converted to {}.'.format(path, newpath)
+    newpath = inputDirectory + '.' + export_format
+    print '{} converted to {}.'.format(path, newpath)
     return newpath
 
 def hansard_page_count(file):
@@ -331,6 +330,41 @@ def get_files(dir, type):
     files = glob.glob ( dir + '/*.' + type)
     #print files
     return files
+
+def getPagesAndCtteeType(path):
+    # open zipfile
+    zf = zipfile.ZipFile(path)
+
+    #create trees from two xml files
+    app = lxml.etree.fromstring(zf.read('docProps/app.xml'))
+    custom = lxml.etree.fromstring(zf.read('docProps/custom.xml'))
+
+    #get page numbers
+    for element in app.iter():
+        #print("%s - %s" % (element.tag, element.text))
+        #print type(element.text)
+        string = element.tag
+        string = string.replace('{http://schemas.openxmlformats.org/officeDocument/2006/extended-properties}',"")
+        if string == 'Pages':
+            print element.text + '\n'
+
+    cttee = None
+    for element in custom.iter():
+       # print("%s - %s" % (element.tag, element.text))
+        #get references/leg cttee
+        keys = element.keys()
+        try:
+            if keys[1] == 'pid':
+                PID = element.get(keys[1])
+            if PID == '17':
+                #print element
+                child = element.getchildren()
+                cttee = child[0].text
+        except:
+            continue
+    cttee = cttee.split()
+    cttee = int(cttee[1]) - 4 #subtract four due to hansard formatting.
+    print cttee
 
 if __name__ == '__main__':
     #print count_subs(get_files())
