@@ -60,12 +60,14 @@ def hearings(path):
 
 def pdf_reader(PDF_file):
     pages = hansard_page_count(PDF_file)
+    #conver to PDF to collect remaining data.
+    conv_to_txt(PDF_file)
+    path = PDF_file[:-3] + 'txt'
+    ctteeType = cttee_type(path)
+    duration = hearing_duration(path)
+    location = hearing_location(path)
+    witnesses = witness_count(path)
 
-    nf = convert_pdf_to_txt(PDF_file)
-    ctteeType = cttee_type(nf)
-    duration = hearing_duration(nf)
-    location = hearing_location(nf)
-    witnesses = witness_count(nf)
     return (ctteeType, duration, pages, location, witnesses)
 
 def docx_reader(docx_file):
