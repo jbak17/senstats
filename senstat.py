@@ -52,7 +52,6 @@ def hearings(path):
             ref_cttee['hansard'] += stats[2]
             ref_cttee['locations'][stats[3]] += 1
             ref_cttee['witnesses'] += stats[4]
-        print stats
 
     #print results
     printer.publicHearingOutString(leg_cttee)
@@ -300,6 +299,11 @@ def get_files(dir, type):
     return files
 
 def getPagesAndCtteeType(path):
+    '''
+    Accepts the path to a docx file.
+    Calculates the type of committee, number of pages of evidence and number of witnesses.
+    Returns tuple with (cttee type, number of pages, number of witnesses)
+    '''
     # open zipfile
     zf = zipfile.ZipFile(path)
     data = {'cttee_type' : None, 'pages' : 0, 'witnesses': 0}
