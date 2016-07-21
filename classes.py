@@ -26,24 +26,24 @@ class Outstrings(object):
             -durations of hearings
         '''
         #cttee_type
-        print 'Senate {} Committee'.format(cttee_dictionary['type'])
-        print '='*15
+        ct = 'Senate {} Committee'.format(cttee_dictionary['type'])
+        ln = '='*15
+        br = '\n'
         #hearings
-        print 'There were  {}  hearings'.format(cttee_dictionary['hearings'])
+        hearing = 'There were  {}  hearings'.format(cttee_dictionary['hearings'])
         #states
-        print cttee_dictionary['locations']
+        state = cttee_dictionary['locations']
         #duration
         time = self.time_to_str(cttee_dictionary['duration'])
-        print 'The total duration of these hearings was  {}'.format(time)
+        timeout= 'The total duration of these hearings was  {}'.format(time)
 
         #witnesses
-        print '{}  people appeared before the committee as witnesses'.format(cttee_dictionary['witnesses'])
+        wit = '{}  people appeared before the committee as witnesses'.format(cttee_dictionary['witnesses'])
         #hansard pages
-        print '{}  pages of evidence were gathered in Hansard'.format(cttee_dictionary['hansard'])
-        print '-'*15
-        return ''
+        pg = '{}  pages of evidence were gathered in Hansard'.format(cttee_dictionary['hansard'])
+        return ct + br + ln + br + hearing + br + str(state) + br + timeout + br + wit + br + pg + br + ln
 
-    def time_to_str(seconds):
+    def time_to_str(self, seconds):
         '''
         convert the number of seconds into a user-readable format.
         Takes number of seconds
@@ -209,7 +209,20 @@ class WordTools(object):
             'Unable to establish committee type for {}'.format(zf)
         return self.data
 
-#class PDFTools(object):
+class PDFTools(object):
+    def __init__():
+        pass
+
+    def hansard_page_count(self, PDF_file):
+        '''
+        takes a pdf file.
+        Returns an integer sum of the number of pages.
+        '''
+        pages = 0
+        inputFile = PyPDF2.PdfFileReader(PDF_file)
+        pages += inputFile.getNumPages()
+        pages -= 4 #taking into account the leading pages in Hansard pdfs.
+        return pages
 
 class SubmissionTools(object):
     def __init__(self):

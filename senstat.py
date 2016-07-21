@@ -12,13 +12,13 @@ import subprocess
 import sys
 import PyPDF2
 from pdf_to_txt import convert_pdf_to_txt
-import outstrings
 import classes
 import zipfile
 from bs4 import BeautifulSoup
+from itertools import chain
 
 #iterates over files and calls helper functions.
-def hearings(path):
+def hearings(input_path, cttee_type):
     '''
     Iterates over all .doc, .txt, and .pdf files in the directory path.
     Calls helper functions to find duration, committee types and witness numbers.
@@ -27,11 +27,19 @@ def hearings(path):
     locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
     leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
     ref_cttee = {'type': 'References', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
-
-    printer = outstrings.Outstrings() #create Outstrings ojbect with the functionality of different print outputs
+    files = []
+    path = input_path
+    printer = classes.Outstrings() #create Outstrings object with the functionality of different print outputs
 
     #gather relevant files from directory
-    files = list ( set ( glob.glob (path+'/*.pdf') + glob.glob (path+'/*.docx') ) )
+    if cttee_type == 1 or cttee_type == 2:
+        files.append(path_builder(path, cttee_type))
+        print files
+    else:
+        files.append(path_builder(path, 1))
+        files.append(path_builder(path, 2))
+        files = list(chain.from_iterable(files))
+        print files
 
     for item in files:
         if item[-3:] == 'pdf':
@@ -55,8 +63,24 @@ def hearings(path):
             ref_cttee['witnesses'] += stats[4]
 
     #print results
-    printer.publicHearingOutString(leg_cttee)
-    printer.publicHearingOutString(ref_cttee)
+    if cttee_type == 1:
+        return printer.publicHearingOutString(leg_cttee)
+    elif cttee_type == 2:
+        return printer.publicHearingOutString(ref_cttee)
+    else:
+        return printer.publicHearingOutString(leg_cttee) + '\n' + printer.publicHearingOutString(ref_cttee)
+
+def path_builder(path, cttee_type):
+    '''
+    Takes an integer identifying type of committee from GUI.
+    Returns a list of files from the committee's hearing folder.
+    '''
+    path_type = {'1': 'leg', '2': 'ref'}
+    ct_toString = str(cttee_type)
+    path_to_hearings = path + '/' + path_type[ct_toString] + '/' + 'hearings'
+    #print path_to_hearings
+    files = list ( set ( glob.glob (path_to_hearings + '/*.pdf') + glob.glob (path_to_hearings+'/*.docx') ) )
+    return files
 
 def pdf_reader(PDF_file):
     pages = hansard_page_count(PDF_file)
@@ -316,4 +340,4 @@ def hansard_page_count(PDF_file):
 
 if __name__ == '__main__':
     # hearings(sys.argv[1])
-    #hearings('/home/jarrod/workspace/senstats/test_docs/activeTest')
+    hearings('/home/jarrod/workspace/senstats/test_docs/activeTest')
