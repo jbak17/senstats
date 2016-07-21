@@ -25,3 +25,8 @@ def test_witness_count():
 # # block comment below for testing test_cttee_type. Passed on 23/6/16.
 #     outstring = cttee_type(path); #debugging test
 #     print outstring;
+
+# def test_subcount():
+#     subtool = classes.SubmissionTools()
+#     subs = subtool.count_subs(get_files('/home/jarrod/workspace/senstats/test_docs/subs', 'pdf'))
+#     print subs

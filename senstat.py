@@ -13,6 +13,7 @@ import sys
 import PyPDF2
 from pdf_to_txt import convert_pdf_to_txt
 import outstrings
+import classes
 import zipfile
 from bs4 import BeautifulSoup
 
@@ -80,6 +81,20 @@ def docx_reader(docx_file):
 
     return (ctteeType, duration, pages, location, witnesses)
 
+def get_files(dir, type):
+    '''
+    Helper function to gather files.
+    dir = directory path string
+    Type = Takes a string of either 'doc', 'docx', 'txt' or 'pdf'
+    Returns list of paths to those files.
+    '''
+    types = ['doc', 'docx', 'pdf', 'txt']
+    assert type in types
+    files = glob.glob ( dir + '/*.' + type)
+    #print files
+    return files
+
+#txt file tools
 def conv_to_txt(path):
     '''
     Converts all pdf and word documents to txt.
@@ -231,6 +246,7 @@ def hearing_duration(path):
             time_total += i.total_seconds()
         return time_total
 
+#word file tools
 def word_to_txt(path, export_format):
     '''
     Takes a doc file path (/*/*/.../*.doc) and converts to the designated file type
@@ -244,59 +260,6 @@ def word_to_txt(path, export_format):
     newpath = inputDirectory + '.' + export_format
     print '{} converted to {}.'.format(path, newpath)
     return newpath
-
-def hansard_page_count(PDF_file):
-    '''
-    takes a pdf file and returns an integer sum of the number of pages.
-    '''
-    pages = 0
-    inputFile = PyPDF2.PdfFileReader(PDF_file)
-    pages += inputFile.getNumPages()
-    pages -= 4 #taking into account the leading pages in Hansard pdfs.
-    return pages
-
-def count_subs(files):
-    '''
-    Input: Takes a list of .pdf files' paths
-    Returns: a tuple (number of submissions, number of pages)
-    Attachments are counted as page numbers, but not in the submission count.
-    '''
-    countedSubs = [] #array to hold titles, if an attachment has the same number the count won't be incremented
-    pages = 0
-    for sub in files:
-        #extract the file name from the directory root
-        directory = sub.split('/')
-        file_name = directory[-1]
-        #print file_name
-        re_sub = re.compile('\d+')
-        submission_num = re_sub.findall(file_name)
-
-        if len(submission_num)  >  0:                  #check a valid number was found
-            index = int(submission_num[0])         #cast to integer
-            if index not in countedSubs:
-                countedSubs.append(index)
-
-        #count pages
-        try:
-            inputFile = PyPDF2.PdfFileReader(sub)
-            pages += inputFile.getNumPages()
-        except:
-            print "Unable to process {}".format(sub)
-            continue
-    return (len(countedSubs), pages,)
-
-def get_files(dir, type):
-    '''
-    Helper function to gather files.
-    dir = directory path string
-    Type = Takes a string of either 'doc', 'docx', 'txt' or 'pdf'
-    Returns list of paths to those files.
-    '''
-    types = ['doc', 'docx', 'pdf', 'txt']
-    assert type in types
-    files = glob.glob ( dir + '/*.' + type)
-    #print files
-    return files
 
 def getPagesAndCtteeType(path):
     '''
@@ -340,7 +303,17 @@ def getPagesAndCtteeType(path):
 
     return (data['cttee_type'], data['pages'], data['witnesses'],)
 
+#PDF file tools
+def hansard_page_count(PDF_file):
+    '''
+    takes a pdf file and returns an integer sum of the number of pages.
+    '''
+    pages = 0
+    inputFile = PyPDF2.PdfFileReader(PDF_file)
+    pages += inputFile.getNumPages()
+    pages -= 4 #taking into account the leading pages in Hansard pdfs.
+    return pages
+
 if __name__ == '__main__':
-    #print count_subs(get_files())
     # hearings(sys.argv[1])
-    hearings('/home/jarrod/workspace/senstats/test_docs/activeTest')
+    #hearings('/home/jarrod/workspace/senstats/test_docs/activeTest')

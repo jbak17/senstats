@@ -2,47 +2,54 @@ from Tkinter import *
 import ttk
 import Tkinter,tkFileDialog
 
-def getPath():
-#opens a dialogue box to enable the election of files
-    filez = tkFileDialog.askdirectory(parent=root,title='Choose the directory containing your committee files:', mustexist=True)
-    dir_path.set(filez)
+class GUI(object):
+    def __init__(self, master):
+        self.root = master
+        self.mainframe = ttk.Frame(self.root, padding = '3 3 12 12')
+        self.mainframe.grid(column = 0, row = 0, sticky = (N, W, E, S))
+        self.mainframe.columnconfigure(0, weight = 1)
+        self.mainframe.rowconfigure(0, weight = 1)
+        self.dirButton = ttk.Button(self.mainframe, text="select directory", command = self.getpath).grid(column=3, row=1, sticky=SE)
+        self.buildCommitteeSelector(self.mainframe)
+        dir_path = StringVar()
 
-root = Tk()
-root.title('Committee Office monthly report statistics')
+        #entry box for path
+        directory_entry = ttk.Entry(self.mainframe, width=25, textvariable=dir_path)
+        directory_entry.grid(column=2, row=1, sticky=(W, E))
+        #label for entry box
+        ttk.Label(self.mainframe, text = 'directory:').grid(column=1, row=1, sticky=(W))
+        #button for entry box
 
-#sets up a main window into which everything else is held.
-mainframe = ttk.Frame(root, padding = '3 3 12 12')
-mainframe.grid(column = 0, row = 0, sticky = (N, W, E, S))
-#configure settings just tell the frame to resize if the window size is changed by the user.
-mainframe.columnconfigure(0, weight = 1)
-mainframe.rowconfigure(0, weight = 1)
+        outstring = StringVar()
+        output = Label(self.mainframe, textvariable=outstring).grid(columnspan = 2, column = 1, row = 1, rowspan = 2)
+        #output.pack(anchor =w)
 
-dir_path = StringVar()
-#entry box for path
-directory_entry = ttk.Entry(mainframe, width=25, textvariable=dir_path)
-directory_entry.grid(column=2, row=1, sticky=(W, E))
-#Label for entry box
-ttk.Label(mainframe, text = 'Directory:').grid(column=1, row=1, sticky=(W, E))
-#button for entry box
-ttk.Button(mainframe, text="Select directory", command = getPath).grid(column=3, row=1, sticky=SE)
+    def getpath(self):
+    #opens a dialogue box to enable the election of files
+        filez = tkfiledialog.askdirectory(parent=root,title='choose the directory containing your committee files:', mustexist=true)
+        dir_path.set(filez)
 
-#button for running program
-ttk.Button(mainframe, text ='Calculate').grid(column =3, row = 3, sticky = SE)
-#radiobutton for committee type
-rdFrame = ttk.Frame(mainframe, padding = 5)
-var = IntVar()
-R1 = Radiobutton(rdFrame, text="Legislation", variable=var, value=1)
-R1.pack( anchor = W )
+    def buildCommitteeSelector(self, frame):
+        #button for running program
+        ttk.Button(frame, text ='calculate').grid(column =3, row = 3, sticky = SE)
+        #radiobutton for committee type
+        rdframe = ttk.Frame(frame, padding = 5)
+        var = IntVar()
+        r1 = Radiobutton(rdframe, text="legislation", variable=var, value=1)
+        r1.pack( anchor = W )
 
-R2 = Radiobutton(rdFrame, text="References", variable=var, value=2)
-R2.pack( anchor = W )
+        r2 = Radiobutton(rdframe, text="references", variable=var, value=2)
+        r2.pack( anchor = W )
 
-R3 = Radiobutton(rdFrame, text="Both", variable=var, value=3)
-R3.pack( anchor = W)
-rdFrame.grid(column = 3, row = 2, sticky = (W, S))
+        r3 = Radiobutton(rdframe, text="both", variable=var, value=3)
+        r3.pack( anchor = W)
+        rdframe.grid(column = 3, row = 2, sticky = (W, S))
 
-outstring = StringVar()
-output = Label(mainframe, textvariable=outstring).grid(columnspan = 2, column = 1, row = 1, rowspan = 2)
-#output.pack(anchor =W)
+def main():
+    root = Tk()
+    root.title('Committee Office monthly report statistics')
+    window = GUI(root)
+    root.mainloop()
 
-root.mainloop()
+if __name__ == '__main__':
+    main()
