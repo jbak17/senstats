@@ -27,19 +27,7 @@ def hearings(input_path, cttee_type):
     locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
     leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
     ref_cttee = {'type': 'References', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
-    files = []
-    path = input_path
     printer = classes.Outstrings() #create Outstrings object with the functionality of different print outputs
-
-    #gather relevant files from directory
-    if cttee_type == 1 or cttee_type == 2:
-        files.append(path_builder(path, cttee_type))
-        print files
-    else:
-        files.append(path_builder(path, 1))
-        files.append(path_builder(path, 2))
-        files = list(chain.from_iterable(files))
-        print files
 
     for item in files:
         if item[-3:] == 'pdf':
@@ -81,6 +69,23 @@ def path_builder(path, cttee_type):
     #print path_to_hearings
     files = list ( set ( glob.glob (path_to_hearings + '/*.pdf') + glob.glob (path_to_hearings+'/*.docx') ) )
     return files
+
+def collect_files(path, function = None, cttee_type):
+    '''
+    Takes a string path and int cttee type and returns a list of files for further processing.
+    '''
+    files = []
+    cttee_type = cttee_type
+    #gather relevant files from directory
+    if cttee_type == 1 or cttee_type == 2:
+        files.append(path_builder(path, cttee_type))
+        print files
+    else:
+        files.append(path_builder(path, 1))
+        files.append(path_builder(path, 2))
+        print files
+    #flatten file list to ensure items are strings rather than lists.
+    files = list(chain.from_iterable(files))
 
 def pdf_reader(PDF_file):
     pages = hansard_page_count(PDF_file)
@@ -337,6 +342,17 @@ def hansard_page_count(PDF_file):
     pages += inputFile.getNumPages()
     pages -= 4 #taking into account the leading pages in Hansard pdfs.
     return pages
+
+
+#main
+def main(path, cttee, function, output = None):
+'''
+Main function for senstat. Controls input from the GUI.
+Path is a string to a directory in the proscribed format.
+Cttee is an int describing leg, ref or both.
+Function is a tuple (hearing, private, submission). 1 is a request, 0 is ignore.
+Output is either to the screen or to a file. Output is yet to be implemented. Do not change default until implementation complete!
+'''
 
 if __name__ == '__main__':
     # hearings(sys.argv[1])
