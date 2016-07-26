@@ -63,7 +63,9 @@ class GUI(object):
 
     def buildCommitteeSelector(self, frame):
         '''
-        '''#button for running program
+        Creates three radio buttons to select whether the reports for the Legislation, References or both committees should be evaluated.
+        '''
+        #button for running program
         #radiobutton for committee type
         rdframe = ttk.Frame(frame, padding = 5)
         self.var = IntVar()

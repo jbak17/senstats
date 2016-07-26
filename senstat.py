@@ -20,17 +20,21 @@ from itertools import chain
 #iterates over files and calls helper functions.
 def hearings(input_path, cttee_type):
     '''
-    Iterates over all .doc, .txt, and .pdf files in the directory path.
+    Iterates over all .doc, .txt, and .pdf files in the input path. cttee_type is an integer: 1 leg, 2 ref, 3 both.
     Calls helper functions to find duration, committee types and witness numbers.
     '''
     #dictionaries for recording statistics
     locations = {'ACT': 0, 'WA': 0, 'NT': 0, 'SA': 0, 'QLD': 0, 'NSW': 0, 'VIC': 0, 'TAS': 0}
     leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
     ref_cttee = {'type': 'References', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
-    printer = classes.Outstrings() #create Outstrings object with the functionality of different print outputs
+    #create objects holding functions to work with inputs
+    printer = classes.Outstrings()
+
+    files = collect_files(input_path, cttee_type)
 
     for item in files:
         if item[-3:] == 'pdf':
+            print item
             stats = pdf_reader(item)
         elif item[-3:] == 'ocx':
             stats = docx_reader(item) #returns tuple (ctteeType, duration, pages, location, witnesses)
@@ -70,36 +74,43 @@ def path_builder(path, cttee_type):
     files = list ( set ( glob.glob (path_to_hearings + '/*.pdf') + glob.glob (path_to_hearings+'/*.docx') ) )
     return files
 
-def collect_files(path, function = None, cttee_type):
+def collect_files(path, cttee_type, function = None):
     '''
     Takes a string path and int cttee type and returns a list of files for further processing.
     '''
     files = []
     cttee_type = cttee_type
     #gather relevant files from directory
+    #if only one committee is required request path_builder() to return a list of files for that committee. If both committees are required call path_builder for each.
     if cttee_type == 1 or cttee_type == 2:
         files.append(path_builder(path, cttee_type))
-        print files
     else:
         files.append(path_builder(path, 1))
         files.append(path_builder(path, 2))
-        print files
     #flatten file list to ensure items are strings rather than lists.
     files = list(chain.from_iterable(files))
+    print files
+    return files
 
 def pdf_reader(PDF_file):
-    pages = hansard_page_count(PDF_file)
+    #create objects to work with input file
+    pdfTool = classes.PDFTools()
+    converter = classes.Converter()
+    txtTools = classes.TxtTools()
+
+    pages = pdfTool.hansard_page_count(PDF_file)
     #conver to PDF to collect remaining data.
-    conv_to_txt(PDF_file)
+    converter.conv_to_txt(PDF_file)
     path = PDF_file[:-3] + 'txt'
-    ctteeType = cttee_type(path)
-    duration = hearing_duration(path)
-    location = hearing_location(path)
-    witnesses = witness_count(path)
+    ctteeType = txtTools.cttee_type(path)
+    duration = txtTools.hearing_duration(path)
+    location = txtTools.hearing_location(path)
+    witnesses = txtTools.witness_count(path)
 
     return (ctteeType, duration, pages, location, witnesses)
 
 def docx_reader(docx_file):
+    wordTool = classes.WordTools()
     ctteeType, pages, witnesses = getPagesAndCtteeType(docx_file)
     duration = 0
     location = None
@@ -124,157 +135,6 @@ def get_files(dir, type):
     return files
 
 #txt file tools
-def conv_to_txt(path):
-    '''
-    Converts all pdf and word documents to txt.
-    Returns None.
-    '''
-    #convert all files to txt for later processing.
-    if path[-3:] == 'pdf':
-        try:
-            newpath = path[:-3] + 'txt'
-            fo = open(newpath, 'w');
-            fo.write(convert_pdf_to_txt(path));
-            fo.close();
-            #print '{} was converted to txt.'.format(path)
-            #print 'found pdf'
-        except Exception as e:
-            print 'Unable to convert %s to pdf'.format(path)
-    elif path[-3:] == 'doc' or 'ocx':
-        try:
-            txtPath = path[:-4] + '.txt'
-            fo = open(txtPath, 'w');
-            fo.write(convert_pdf_to_txt(pdfPath));
-            fo.close();
-        except Exception as e:
-            print 'Unable to convert %s to pdf'.format(path)
-    else:
-        print 'Unknown file type'
-        print 'conv_to_txt function problem'
-    return fo
-
-def cttee_type(file):
-    '''
-    Takes a file of format .txt and identifies if the committee is legislation, reference, or sub-committee.
-    Returns the type of committee as string.
-    '''
-    cttee = None;
-    sub_cttee = False
-    with open(file) as f:
-        while cttee == None:
-            for line in f:
-                line = line.rstrip()
-                line = line.lower()
-                #looks for lines that start with a capital C and include a time.
-                if re.search('references committee', line):
-                    cttee = 'References'
-                    break
-                elif re.search('legislation committee', line):
-                    cttee = 'Legislation';
-                    break
-                else:
-                    continue
-    return cttee
-
-def hearing_location(txt_file):
-    '''
-    Determines which state or territory the hearing was held in.
-    Takes a path to a txt file.
-    Returns a string with the state or territory.
-    If the location wasn't in the dictionary of locations, the function will return a string of the location in city form.
-    '''
-    #Dictionary to convert hearing city to state.
-    states = {'SYDNEY': 'NSW', 'NEWCASTLE': 'NSW', 'MELBOURNE': 'VIC', 'GEELONG': 'VIC', 'BENDIGO': 'VIC', 'CANBERRA': 'ACT', 'ADELAIDE': 'SA', 'PERTH': 'WA', 'HOBART': 'TAS', 'DARWIN': 'NT'}
-    location = None;
-    start = False;
-    retString = None;
-    with open(txt_file) as f:
-        for line in f:
-            line = line.rstrip();
-            line = line.lstrip();
-            line = line.upper()
-            #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
-            #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
-            #loop breaks once hearing commences.
-            if re.search('BY AUTHORITY OF', line):
-                break
-            if re.search('(?:MON|TUES|WEDNES|THURS|FRI)DAY', line):
-                start = True
-                continue
-            if start:
-                if re.search('[A-Z]+?', line):
-                    location = line
-                    break
-    try:
-        retString = states[location];
-    except KeyError:
-        retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
-    return retString
-
-def witness_count(path):
-    '''
-    Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
-    '''
-    witnesses = 0
-    witness_list = []
-    with open(path) as f:
-        for line in f:
-            line = line.rstrip();
-            #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
-            #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
-            #loop breaks once hearing commences.
-            if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
-                break
-            if re.search('(?:M|D)(r|rs|iss|s)\s[A-Z].+,', line):
-                temp = line[0:20]
-                if temp not in witness_list:
-                    witness_list.append(temp)
-                    witnesses += 1;
-                # print 'line: {}'.format(line)
-                # print 'temp: {}'.format(temp)
-    return witnesses
-
-def hearing_duration(path):
-    '''
-    Takes a path to a .txt file.
-    Returns a string indicating how much time the hearing in the relevant folder ran for.
-    '''
-    times = []
-    with open(path) as f:
-        for line in f:
-            line = line.rstrip()
-            #looks for lines that start with a capital C and include a time.
-            if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
-                times.append(line)
-            #looks for lines that start with a capital P and include a time.
-            if re.search('Proceedings suspended.+[0-9][0-9]:[0-9][0-9]', line):
-                times.append(line)
-
-        #extract times from lines and place into array.
-        times_clean = []
-        for line in times:
-            temp = line.split()
-            for i in temp:
-                if re.search('^[0-9].+?', i):
-                    times_clean.append(i.translate(string.maketrans("",""), string.punctuation))
-        #print times_clean      #degugging print statement
-
-        #calculate durations
-        try:
-            assert True, len(times_clean) % 2 == 0
-        except AssertionEror as e:
-            raise 'An incorrect number of times were found, program cannot guarantee accuracy of reported times.'
-        time_total = 0
-        duration = []
-        while len(times_clean) != 0:
-            start = times_clean.pop(0)
-            end = times_clean.pop(0)
-            duration.append(datetime.timedelta(minutes=int(end[-2:]), hours=int(end[:2])) - datetime.timedelta(minutes=int(start[-2:]), hours=int(start[:2])))
-
-        for i in duration:
-            time_total += i.total_seconds()
-        return time_total
-
 #word file tools
 def word_to_txt(path, export_format):
     '''
@@ -345,15 +205,26 @@ def hansard_page_count(PDF_file):
 
 
 #main
-def main(path, cttee, function, output = None):
-'''
-Main function for senstat. Controls input from the GUI.
-Path is a string to a directory in the proscribed format.
-Cttee is an int describing leg, ref or both.
-Function is a tuple (hearing, private, submission). 1 is a request, 0 is ignore.
-Output is either to the screen or to a file. Output is yet to be implemented. Do not change default until implementation complete!
-'''
+def main(path, cttee, function, output = 1):
+    '''
+    Main function for senstat. Controls input from the GUI.
+    Path is a string to a directory in the proscribed format.
+    Cttee is an int describing leg (1), ref (2) or both (3).
+    Function is a tuple (hearing, private, submission). 1 is a request, 0 is ignore.
+    Output is either to the screen (1) or to a file (2). Output is yet to be implemented. Do not change default until implementation complete!
+    '''
+    pass
+    if output ==1: #print to screen.
+        outString = ''
+        if function[1] == 1: #hearing request
+            pass
+        if output == 2: #private meetings request
+            pass
+        if output == 3: #submissions request
+            pass
+        return outString
+
 
 if __name__ == '__main__':
     # hearings(sys.argv[1])
-    hearings('/home/jarrod/workspace/senstats/test_docs/activeTest')
+    print hearings('/home/jarrod/workspace/senstats/economics', 2)

@@ -140,8 +140,6 @@ class WordTools(object):
         Convert .docx to .txt
         Extract page numbers from .docx
         Extract committee type from .docx
-
-
     '''
     def __init__(self, path):
         try:
@@ -210,7 +208,7 @@ class WordTools(object):
         return self.data
 
 class PDFTools(object):
-    def __init__():
+    def __init__(self):
         pass
 
     def hansard_page_count(self, PDF_file):
@@ -225,6 +223,7 @@ class PDFTools(object):
         return pages
 
 class SubmissionTools(object):
+
     def __init__(self):
         pass
     def count_subs(self, files):
@@ -256,3 +255,167 @@ class SubmissionTools(object):
                 print "Unable to process {}".format(sub)
                 continue
         return (len(countedSubs), pages,)
+
+class TxtTools(object):
+    '''
+    Includes all functions that operate of .txt files.
+    Functions:
+        cttee_type
+        hearing_duration
+        conv_to_txt
+        hearing_location
+        witness_count
+    '''
+    def __init__(self):
+        pass
+
+    def cttee_type(self, file):
+        '''
+        Takes a file of format .txt and identifies if the committee is legislation, reference, or sub-committee.
+        Returns the type of committee as string.
+        '''
+        cttee = None;
+        sub_cttee = False
+        with open(file) as f:
+            while cttee == None:
+                for line in f:
+                    line = line.rstrip()
+                    line = line.lower()
+                    #looks for lines that start with a capital C and include a time.
+                    if re.search('references committee', line):
+                        cttee = 'References'
+                        break
+                    elif re.search('legislation committee', line):
+                        cttee = 'Legislation';
+                        break
+                    else:
+                        continue
+        return cttee
+
+    def hearing_duration(self, path):
+        '''
+        Takes a path to a .txt file.
+        Returns a string indicating how much time the hearing in the relevant folder ran for.
+        '''
+        times = []
+        with open(path) as f:
+            for line in f:
+                line = line.rstrip()
+                #looks for lines that start with a capital C and include a time.
+                if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
+                    times.append(line)
+                #looks for lines that start with a capital P and include a time.
+                if re.search('Proceedings suspended.+[0-9][0-9]:[0-9][0-9]', line):
+                    times.append(line)
+
+            #extract times from lines and place into array.
+            times_clean = []
+            for line in times:
+                temp = line.split()
+                for i in temp:
+                    if re.search('^[0-9].+?', i):
+                        times_clean.append(i.translate(string.maketrans("",""), string.punctuation))
+            #print times_clean      #degugging print statement
+
+            #calculate durations
+            try:
+                assert True, len(times_clean) % 2 == 0
+            except AssertionEror as e:
+                raise 'An incorrect number of times were found, program cannot guarantee accuracy of reported times.'
+            time_total = 0
+            duration = []
+            while len(times_clean) != 0:
+                start = times_clean.pop(0)
+                end = times_clean.pop(0)
+                duration.append(datetime.timedelta(minutes=int(end[-2:]), hours=int(end[:2])) - datetime.timedelta(minutes=int(start[-2:]), hours=int(start[:2])))
+
+            for i in duration:
+                time_total += i.total_seconds()
+            return time_total
+
+    def conv_to_txt(self, path):
+        '''
+        Converts all pdf and word documents to txt.
+        Returns None.
+        '''
+        #convert all files to txt for later processing.
+        if path[-3:] == 'pdf':
+            try:
+                newpath = path[:-3] + 'txt'
+                fo = open(newpath, 'w');
+                fo.write(convert_pdf_to_txt(path));
+                fo.close();
+                #print '{} was converted to txt.'.format(path)
+                #print 'found pdf'
+            except Exception as e:
+                print 'Unable to convert %s to pdf'.format(path)
+        elif path[-3:] == 'doc' or 'ocx':
+            try:
+                txtPath = path[:-4] + '.txt'
+                fo = open(txtPath, 'w');
+                fo.write(convert_pdf_to_txt(pdfPath));
+                fo.close();
+            except Exception as e:
+                print 'Unable to convert %s to pdf'.format(path)
+        else:
+            print 'Unknown file type'
+            print 'conv_to_txt function problem'
+        return fo
+
+    def hearing_location(self, txt_file):
+        '''
+        Determines which state or territory the hearing was held in.
+        Takes a path to a txt file.
+        Returns a string with the state or territory.
+        If the location wasn't in the dictionary of locations, the function will return a string of the location in city form.
+        '''
+        #Dictionary to convert hearing city to state.
+        states = {'SYDNEY': 'NSW', 'NEWCASTLE': 'NSW', 'MELBOURNE': 'VIC', 'GEELONG': 'VIC', 'BENDIGO': 'VIC', 'CANBERRA': 'ACT', 'ADELAIDE': 'SA', 'PERTH': 'WA', 'HOBART': 'TAS', 'DARWIN': 'NT'}
+        location = None;
+        start = False;
+        retString = None;
+        with open(txt_file) as f:
+            for line in f:
+                line = line.rstrip();
+                line = line.lstrip();
+                line = line.upper()
+                #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
+                #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
+                #loop breaks once hearing commences.
+                if re.search('BY AUTHORITY OF', line):
+                    break
+                if re.search('(?:MON|TUES|WEDNES|THURS|FRI)DAY', line):
+                    start = True
+                    continue
+                if start:
+                    if re.search('[A-Z]+?', line):
+                        location = line
+                        break
+        try:
+            retString = states[location];
+        except KeyError:
+            retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
+        return retString
+
+    def witness_count(self, path):
+        '''
+        Takes a file of format .txt and counts the number of witnesses at a public hearing and returns an int.
+        '''
+        witnesses = 0
+        witness_list = []
+        with open(path) as f:
+            for line in f:
+                line = line.rstrip();
+                #looks for a line that commences with one or more upper case letters followed by a comma, and ends with a number.
+                #if the criteria are met witnesses are incremented. Based on how Hansard lays out the witness list.
+                #loop breaks once hearing commences.
+                if re.search('Committee.+[0-9][0-9]:[0-9][0-9]', line):
+                    break
+                if re.search('(?:M|D)(r|rs|iss|s)\s[A-Z].+,', line):
+                    temp = line[0:20]
+                    if temp not in witness_list:
+                        witness_list.append(temp)
+                        witnesses += 1;
+                    # print 'line: {}'.format(line)
+                    # print 'temp: {}'.format(temp)
+        return witnesses
