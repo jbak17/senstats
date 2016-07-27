@@ -16,7 +16,8 @@ class Outstrings(object):
     Module contains a list of functions to format strings for different senate stat purposes
     """
     def __init__(self):
-        pass
+        self.ln = '='*15 + '\n'
+        self.br = '\n'
 
     def publicHearingOutString(self, cttee_dictionary):
         '''
@@ -41,7 +42,7 @@ class Outstrings(object):
         wit = '{}  people appeared before the committee as witnesses'.format(cttee_dictionary['witnesses'])
         #hansard pages
         pg = '{}  pages of evidence were gathered in Hansard'.format(cttee_dictionary['hansard'])
-        return ct + br + ln + br + hearing + br + str(state) + br + timeout + br + wit + br + pg + br + ln
+        return ct + br + ln + br + hearing + br + str(state) + br + timeout + br + wit + br + pg + br + ln + br
 
     def time_to_str(self, seconds):
         '''
@@ -55,11 +56,27 @@ class Outstrings(object):
         #return duration
         return out_time
 
-    def submissionsOutString(self, arg):
+    def submissionsOutString(self, sub_tuple):
         '''
-        Takes a tuple of number of submissions and number of page and returns string
+        Takes a tuple of (number of submissions, number of page) and returns string
         '''
-        pass
+        noSubs = sub_tuple[0]
+        noPages = sub_tuple[1]
+        newString = '{}SUBMISSIONS\n{}Number of submissions: {}\nNumber of pages: {}\n'.format(self.ln, self.ln, noSubs, noPages)
+        return newString
+
+    def stringBuilder(self, strings):
+        '''
+        Takes a list of strings.
+        Returns a single string.
+        '''
+        count = len(strings)
+        template = '{}'
+        outString = ''
+        for i in range(1,count):
+            outString += '\{s[i]\}'
+        outString = '{}.format( s={})'.format(outString, strings)
+        return outString
 
     # locations = {'ACT': 0, 'WA': 1, 'NT': 0, 'SA': 0, 'QLD': 2, 'NSW': 0, 'VIC': 0, 'TAS': 0}
     # leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 1, 'witnesses': 23, 'locations': locations.copy(), 'hansard': 200 };
@@ -139,6 +156,7 @@ class WordTools(object):
     Has the following functions:
         Convert .docx to .txt
         Extract page numbers from .docx
+        Extract number of witnesses from .docx
         Extract committee type from .docx
     '''
     def __init__(self, path):
@@ -154,58 +172,56 @@ class WordTools(object):
         Inputs are strings
         returns a path to the newly created  file (/*/*/.../*.export_format)
          '''
-        self.temp_string = path.split('.');
-        self.inputDirectory = temp_string[0];
-        self.cmd = 'unoconv -f  {} {}'.format(export_format, path)
-        os.system(self.cmd)
-        self.newpath = self.inputDirectory + '.' + export_format
-        print '{} converted to {}.'.format(path, self.newpath)
-        return self.newpath
+        temp_string = path.split('.');
+        inputDirectory = temp_string[0];
+        cmd = 'unoconv -f  {} {}'.format(export_format, path)
+        os.system(cmd)
+        newpath = inputDirectory + '.' + export_format
+        print '{} converted to {}.'.format(path, newpath)
+        return newpath
 
-    def getPages(self, zf):
+    def getPages(self):
         '''
         Accepts the path to a zipfile.
-        Calculates the number of pages of evidence.
+        Calculates th number of pages of evidence.
         Returns an integer of the number of pages
         '''
-        self.app = zf.read('docProps/app.xml')
-        self.pages = re.findall('<Pages>[0-9]+<', self.app)
+        app = self.zf.read('docProps/app.xml')
+        pages = re.findall('<Pages>[0-9]+<', app)
         try:
-            self.pagestr = self.pages[0]
+            pagestr = pages[0]
         except Exception as e:
-            print 'Unable to establish number of pages for {}'.format(zf)
-        self.trans = string.maketrans("","")
-        self.nodigs = self.trans.translate(self.trans, string.digits)
-        self.outString = self.pagestr.translate(self.trans, self.nodigs)
+            print 'Unable to establish number of pages for {}'.format(self.zf)
+        trans = string.maketrans("","")
+        nodigs = trans.translate(trans, string.digits)
+        outString = pagestr.translate(trans, nodigs)
         return int(outString) - 4 #subtract 4 to account for Hansard styling.
 
-    def getWitnesses(self, zf):
+    def getWitnesses(self):
         '''
-        Accepts a path to zipfile
         Returns an integer of the number of witnesses that appeared
         '''
         #get number of witnesses. item4 contains data on witnesses.
         try:
-            self.witnesses = zf.read('customXml/item4.xml')
-            self.soup = BeautifulSoup(witnesses, 'lxml')
-            self.witList = len(soup.find_all('t:name'))
-            return int(self.witList)
+            witnesses = self.zf.read('customXml/item4.xml')
+            soup = BeautifulSoup(witnesses, 'lxml')
+            witList = len(soup.find_all('t:name'))
+            return int(witList)
         except Exception as e:
-            'Unable to establish number of witnesses for {}'.format(zf)
+            'Unable to establish number of witnesses for {}'.format(self.zf)
 
-    def getType(self, zf):
+    def getType(self):
         '''
         Accepts the handle to a zipfile
         Returns a string of committee type: Legislation or References
         '''
-        self.custom = zf.read('docProps/custom.xml')
-        self.app = zf.read('docProps/custom.xml')
-        self.cttee = re.findall('(Legislation|References)', self.app)
+        app = self.zf.read('docProps/custom.xml')
+        cttee = re.findall('(Legislation|References)', app)
         try:
-            self.data = cttee[0]
+            data = cttee[0]
         except:
-            'Unable to establish committee type for {}'.format(zf)
-        return self.data
+            'Unable to establish committee type for {}'.format(self.zf)
+        return data
 
 class PDFTools(object):
     def __init__(self):
@@ -223,7 +239,12 @@ class PDFTools(object):
         return pages
 
 class SubmissionTools(object):
-
+    '''
+    Class to hold all tools related to submissions.
+    Functions:
+        - count_subs: accepts list of submissions and returns number of subs and page numbers.
+        - sub_reader: accepts a path to committee, gathers files and processes. Returns number of subs and page numbers.
+    '''
     def __init__(self):
         pass
     def count_subs(self, files):
@@ -255,6 +276,17 @@ class SubmissionTools(object):
                 print "Unable to process {}".format(sub)
                 continue
         return (len(countedSubs), pages,)
+
+    def sub_reader(self, path, cttee_type, sub_list = None):
+        '''
+        Processes submissions from GUI request.
+        Returns a tuple with (no subs, no. pages)
+        '''
+        newPath = senstat.path_builder(path, cttee_type, 'subs')
+        files = glob.glob(newPath + '/*.pdf')
+        data = self.count_subs(files) #data will be a tuple
+        return data
+
 
 class TxtTools(object):
     '''
@@ -419,3 +451,21 @@ class TxtTools(object):
                     # print 'line: {}'.format(line)
                     # print 'temp: {}'.format(temp)
         return witnesses
+
+class Janitor(object):
+    '''
+    Class to hold functions to remove any additional files created during other processes.
+    '''
+    def __init__(self):
+        pass
+
+    def delete_txt(self, path):
+        '''
+        Accepts a path to a location and deletes all txt files therein
+        '''
+        np = path + '/*.txt'
+        print np
+        files = glob.glob(np)
+        print files
+        for item in files:
+            os.remove(item)

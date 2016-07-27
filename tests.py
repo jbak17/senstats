@@ -1,6 +1,7 @@
 import os
 import shutil
 import senstat
+import classes
 from nose import with_setup
 
 '''
@@ -30,3 +31,10 @@ def test_witness_count():
 #     subtool = classes.SubmissionTools()
 #     subs = subtool.count_subs(get_files('/home/jarrod/workspace/senstats/test_docs/subs', 'pdf'))
 #     print subs
+
+def test_delete_text():
+    clean = classes.Janitor()
+    path = '/home/jarrod/workspace/senstats/economics/ref/hearings'
+    clean.delete_txt(path)
+
+test_delete_text()

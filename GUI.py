@@ -2,6 +2,7 @@ from Tkinter import *
 import ttk
 import Tkinter,tkFileDialog
 import senstat
+import classes
 
 class GUI(object):
     def __init__(self, master):
@@ -12,19 +13,26 @@ class GUI(object):
         self.mainframe.grid(column = 0, row = 1, sticky = (N, W, E, S))
         self.mainframe.columnconfigure(0, weight = 1)
         self.mainframe.rowconfigure(0, weight = 1)
+        self.buildFunctionSelection(self.mainframe)
+
+        #head
         self.head_style = ttk.Style()
         self.head_style.configure('head_style.TFrame', background = 'red')
         self.head = ttk.Frame(self.root, style = 'head_style.TFrame')
         self.head.grid(row = 0, sticky = (N,W,E,S))
-        #self.but = ttk.Button(self.head).grid()
-        self.buildFunctionSelection(self.mainframe)
-        self.mainframe.pack()
 
         #buttons
+        #directory button
         self.dir_path = StringVar()
         self.dirButton = ttk.Button(self.mainframe, text="select directory", command = self.getpath).grid(column=3, row=1, sticky=SE)
+        #submission button
+        self.submissions = None
+        self.submissions_set = BooleanVar()
+        ttk.Button(self.mainframe, text = 'Submissions', command = self.submission_request).grid(column = 3, row = 4, sticky = SE)
+        #committee selector button
         self.committee_selector = self.buildCommitteeSelector(self.mainframe)
-        ttk.Button(self.mainframe, text ='Calculate', command = self.calculate).grid(column =3, row = 3, sticky = SE)
+        #run senstats button
+        ttk.Button(self.mainframe, text ='Calculate', command = self.senstat_request).grid(column =3, row = 3, sticky = SE)
 
         #entry box for path
         directory_entry = ttk.Entry(self.mainframe, width=25, textvariable=self.dir_path)
@@ -32,16 +40,11 @@ class GUI(object):
         directory_entry.focus()
         ttk.Label(self.mainframe, text = 'Directory:').grid(column=1, row=1, sticky=(W))
 
+        #output area
         self.outstring = StringVar()
         self.output = ttk.Label(self.mainframe, textvariable=self.outstring).grid(columnspan = 2, column = 1, row = 1, rowspan = 2)
-        #self.output.pack(anchor =W)
-        for child in self.mainframe.winfo_children(): child.grid_configure(padx=5, pady=5)
-
-    # def build_header(self, frame):
-    #     self.head_style = ttk.Style()
-    #     self.head_style.configure('head_style.TFrame', background = 'red')
-    #     self.head = ttk.Frame(frame, style = 'head_style.TFrame')
-    #     return self.head
+        for child in self.mainframe.winfo_children():
+            child.grid_configure(padx=5, pady=5)
 
     def getpath(self):
     #opens a dialogue box to enable the election of files
@@ -80,17 +83,39 @@ class GUI(object):
         rdframe.grid(column = 3, row = 2, sticky = (W, S))
         return self.var
 
-    def calculate(self):
+    def getSubmisssions(self):
+        self.submissions = tkFileDialog.askopenfilenames(parent = self.mainframe, title='Select submissions:')
+        self.submissions_set.set(1)
+        #print submissions
+
+    def senstat_request(self):
         '''
         Collects the string with the directory and the type of committee. These are fed to senstat.py to get the results and set the label outstring with results.
         '''
         path = self.dir_path.get()
         #creates a tuple to be passed to senstat. If selected value is 1 and the user wants the result of those functions.
         request = (self.hansard.get(), self.private.get(), self.subs.get())
-        print request
+        print 'Function request: ' + str(request)
         ctype = self.committee_selector.get() #ctype is an integer.
-        results = senstat.hearings(path, ctype)
+        #if submissions haven't been choosen do that now.
+        if request[2] ==1 and self.submissions_set.get() == 0:
+            self.getSubmisssions()
+            print 'Submissions: {}'.format(self.submissions)
+        #send request and assign string to results.
+        results = senstat.main(path, ctype, request, self.submissions)
         self.outstring.set(results)
+
+    def submission_request(self):
+        '''
+        User selects submissions to consider.
+        Results printed out in label area.
+        '''
+        submissionReader = classes.SubmissionTools()
+        stringifier = classes.Outstrings()
+        self.getSubmisssions()
+        subs = list(self.submissions)
+        data = submissionReader.count_subs(subs) #data is tuple
+        self.outstring.set(stringifier.submissionsOutString(data))
 
 def main():
     root = Tk()
