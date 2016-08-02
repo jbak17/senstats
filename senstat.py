@@ -26,7 +26,6 @@ def hearings(input_path, cttee_type):
     leg_cttee = {'type': 'Legislation', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
     ref_cttee = {'type': 'References', 'hearings': 0, 'duration': 0, 'witnesses': 0, 'locations': locations.copy(), 'hansard': 0 };
     #create objects holding functions to work with inputs
-    printer = classes.Outstrings()
     cleaner = classes.Janitor()
 
     files = collect_files(input_path)
@@ -58,6 +57,7 @@ def hearings(input_path, cttee_type):
     cleaner.delete_txt(input_path)
     print 'Gathering results from hearings()...'
     outString = None
+    printer = classes.Outstrings()
     if cttee_type == 1:
         outString= printer.publicHearingOutString(leg_cttee)
     elif cttee_type == 2:
@@ -138,7 +138,7 @@ def get_files(dir, type):
     #print files
     return files
 
-def main(path, cttee, function, submissions = False, output = 1):
+def main(path, cttee, function, output = 1):
     '''
     Main function for senstat. Controls input from the GUI.
     Path is a string to a directory in the proscribed format.
@@ -154,23 +154,24 @@ def main(path, cttee, function, submissions = False, output = 1):
             if cttee == 1 or cttee == 2:#not both
                 hearing_path = path_builder(path, cttee, 'hearings')
                 outStrings += hearings(hearing_path, cttee)
-            # elif cttee == 2:    #ref
-            #     hearing_path = path_builder(path, cttee, 'hearings')
-            #     #print hearing_path
-            #     return hearings(hearing_path, cttee)
             elif cttee == 3:    #both
-                pass
+                for i in [1, 2]:
+                    hearing_path = path_builder(path, i, 'hearings')
+                    print hearing_path
+                    outStrings += hearings(hearing_path, i)
             else:
                 print 'Unknown committee identifying integer.'
         if function[1] == 1: #private meetings request
             pass
         if function[2] == 1: #submissions request
-            subs = list(submissions)
             submissionReader = classes.SubmissionTools()
-            data = submissionReader.count_subs(subs)
-            print data
-            subString = stringifier.submissionsOutString(data)
-            outStrings += subString 
+            if cttee == 1 or cttee == 2:#not both
+                data = submissionReader.sub_reader(path, cttee) #path to submission
+                outStrings += stringifier.submissionsOutString(data)
+            elif cttee == 3:    #both
+                pass
+            else:
+                print 'Unknown committee identifying integer.'
     return outStrings
 
 if __name__ == '__main__':

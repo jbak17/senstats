@@ -11,6 +11,7 @@ import outstrings
 import zipfile
 from bs4 import BeautifulSoup
 import senstat
+import database_classes
 
 class Outstrings(object):
     """
@@ -407,6 +408,7 @@ class TxtTools(object):
         location = None;
         start = False;
         retString = None;
+        query = database_classes.Query()
         with open(txt_file) as f:
             for line in f:
                 line = line.rstrip();
@@ -425,7 +427,8 @@ class TxtTools(object):
                         location = line
                         break
         try:
-            retString = states[location];
+            #retString = states[location];
+            retString = query.getJurisdiction(location)
         except KeyError:
             retString = '{} unable to be assigned to State/Territory. \n Please manually add location to relevant state tally. \n Please inform administrator so program can be updated.'.format(location)
         return retString

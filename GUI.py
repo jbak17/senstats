@@ -1,6 +1,6 @@
 from Tkinter import *
 import ttk
-import Tkinter,tkFileDialog
+import tkFileDialog
 import senstat
 import classes
 
@@ -10,29 +10,25 @@ class GUI(object):
 
         #Main frame to hold all other widgets
         self.mainframe = ttk.Frame(self.root, padding = '3 3 12 12')
-        self.mainframe.grid(column = 0, row = 1, sticky = (N, W, E, S))
+        self.mainframe.grid(column = 0, row = 1, sticky = (N,W,E,S))
         self.mainframe.columnconfigure(0, weight = 1)
         self.mainframe.rowconfigure(0, weight = 1)
         self.buildFunctionSelection(self.mainframe)
-
-        #head
-        self.head_style = ttk.Style()
-        self.head_style.configure('head_style.TFrame', background = 'red')
-        self.head = ttk.Frame(self.root, style = 'head_style.TFrame')
-        self.head.grid(row = 0, sticky = (N,W,E,S))
-
-        #buttons
+        self.buildOutputArea(self.mainframe)
+        #
+        #------------    BUTTONS ---------------
+        #
         #directory button
         self.dir_path = StringVar()
         self.dirButton = ttk.Button(self.mainframe, text="select directory", command = self.getpath).grid(column=3, row=1, sticky=SE)
         #submission button
         self.submissions = None
         self.submissions_set = BooleanVar()
-        ttk.Button(self.mainframe, text = 'Submissions', command = self.submission_request).grid(column = 3, row = 4, sticky = SE)
+        ttk.Button(self.mainframe, text = 'Submissions', command = self.submission_request).grid(column = 3, row = 5, sticky = SE)
         #committee selector button
         self.committee_selector = self.buildCommitteeSelector(self.mainframe)
         #run senstats button
-        ttk.Button(self.mainframe, text ='Calculate', command = self.senstat_request).grid(column =3, row = 3, sticky = SE)
+        ttk.Button(self.mainframe, text ='Calculate', command = self.senstat_request).grid(column =3, row = 4, sticky = SE)
 
         #entry box for path
         directory_entry = ttk.Entry(self.mainframe, width=25, textvariable=self.dir_path)
@@ -40,11 +36,20 @@ class GUI(object):
         directory_entry.focus()
         ttk.Label(self.mainframe, text = 'Directory:').grid(column=1, row=1, sticky=(W))
 
-        #output area
-        self.outstring = StringVar()
-        self.output = ttk.Label(self.mainframe, textvariable=self.outstring).grid(columnspan = 2, column = 1, row = 1, rowspan = 2)
+        #styling
         for child in self.mainframe.winfo_children():
             child.grid_configure(padx=5, pady=5)
+
+        #output area
+    def buildOutputArea(self, frame):
+        outputFrame = ttk.Frame(frame, padding = (10, 10), relief = 'sunken', width = 200, height = 200)
+        self.outstring = StringVar()
+        output = ttk.Label(outputFrame, textvariable=self.outstring).grid(row =1, column =1)
+        s = ttk.Scrollbar(outputFrame, orient = VERTICAL)
+        #outputFrame['yscrollcommand'] = s.set
+        #self.outstring.set('Here is the output area.')
+        outputFrame.grid(columnspan = 2, column = 1, rowspan = 2, row = 2)
+
 
     def getpath(self):
     #opens a dialogue box to enable the election of files
@@ -97,12 +102,8 @@ class GUI(object):
         request = (self.hansard.get(), self.private.get(), self.subs.get())
         print 'Function request: ' + str(request)
         ctype = self.committee_selector.get() #ctype is an integer.
-        #if submissions haven't been choosen do that now.
-        if request[2] ==1 and self.submissions_set.get() == 0:
-            self.getSubmisssions()
-            print 'Submissions: {}'.format(self.submissions)
         #send request and assign string to results.
-        results = senstat.main(path, ctype, request, self.submissions)
+        results = senstat.main(path, ctype, request)
         self.outstring.set(results)
 
     def submission_request(self):
@@ -117,11 +118,32 @@ class GUI(object):
         data = submissionReader.count_subs(subs) #data is tuple
         self.outstring.set(stringifier.submissionsOutString(data))
 
+    def jurisdiction_database_window(self, location):
+        '''
+        @param: location = string of hearing location.
+        Creates a window asking the user to select a jurisdiction.
+        '''
+        def select():
+            var.get()
+        top = Toplevel(padx = 10, pady = 10, takefocus = True)
+        top.title('Jurisdiction selection:')
+        top.height = '400'
+        top.width = '400'
+        top.relief = 'RIDGE'
+        top.lift()
+        msg = Message(top, text = 'I was unable to identify the State/Territory of {} in our database. Please select the relevant jurisdiction from the list below.'.format(location))
+        msg.grid(column = 2, row = 1, columnspan = 2)
+        button = Button(top, text = 'Submit', command = select).grid(row = 2, column = 3)
+        choices = ['ACT', 'NT', 'SA', 'WA', 'QLD', 'VIC', 'NSW', 'TAS']
+        var = StringVar(top)
+        option = OptionMenu(top, var, *choices).grid(row =2, column = 2, sticky = W)
+
 def main():
     root = Tk()
     s = ttk.Style().theme_use('clam')
     root.title('Committee Office monthly report statistics')
     window = GUI(root)
+    #window.jurisdiction_database_window('perth')
     root.mainloop()
 
 if __name__ == '__main__':
