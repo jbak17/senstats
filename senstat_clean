@@ -1,0 +1,6 @@
+#!/bin/bash
+#clean activeTest directory after testing senstat.py
+
+rm /home/jarrod/workspace/senstats/test_docs/activeTest/*.pdf \;
+rm /home/jarrod/workspace/senstats/test_docs/activeTest/*.txt \;
+rm /home/jarrod/workspace/senstats/test_docs/activeTest/*.docx \;
