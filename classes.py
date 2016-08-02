@@ -10,6 +10,7 @@ from pdf_to_txt import convert_pdf_to_txt
 import outstrings
 import zipfile
 from bs4 import BeautifulSoup
+import senstat
 
 class Outstrings(object):
     """
